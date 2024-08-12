@@ -1,7 +1,9 @@
 use serde_derive::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
+use std::fs;
+
+mod error;
+
+use crate::error::handler::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ImageSetConfig {
@@ -104,21 +106,18 @@ pub struct Channel {
 
 // read the 'image set config' file
 impl ImageSetConfig {
-    pub fn load_config(dir: String) -> Result<String, Box<dyn std::error::Error>> {
+    pub fn load_config(config_file: String) -> Result<String, Box<dyn std::error::Error>> {
         // Create a path to the desired file
-        let path = Path::new(&dir);
-        let display = path.display();
-
-        // Open the path in read-only mode, returns `io::Result<File>`
-        let mut file = match File::open(&path) {
-            Err(why) => panic!("couldn't open {}: {}", display, why),
-            Ok(file) => file,
-        };
-
-        // Read the file contents into a string, returns `io::Result<usize>`
-        let mut s = String::new();
-        file.read_to_string(&mut s)?;
-        Ok(s)
+        let data = fs::read_to_string(config_file.clone());
+        if data.is_ok() {
+            Ok(data.unwrap())
+        } else {
+            let err = Box::new(MirrorError::new(&format!(
+                "reading config {:?}",
+                data.err().unwrap().to_string().to_lowercase()
+            )));
+            Err(err)
+        }
     }
 
     // parse the 'image set config' file
